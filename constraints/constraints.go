@@ -27,5 +27,10 @@ type Number interface {
 	Integer | Float
 }
 
+// Complex 复数类型
+type Complex interface {
+	~complex64 | ~complex128
+}
+
 // Ordered 可排序类型
 type Ordered = cmp.Ordered
