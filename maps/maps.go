@@ -117,7 +117,7 @@ func Merge[K comparable, V any, Map ~map[K]V](maps ...Map) Map {
 	return out
 }
 
-// Chunk 针对map进行分组，分组的长度为size
+// Chunk 针对map进行分块，分块的长度为size
 func Chunk[K comparable, V any](m map[K]V, size int) []map[K]V {
 	if size <= 0 {
 		panic("The chunk size must be greater than 0")

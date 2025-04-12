@@ -83,6 +83,8 @@ func MsgpackUnmarshal(bytes []byte, v any) error {
 	return msgpack.Unmarshal(bytes, v)
 }
 
+var sanitizeEncoder = NewSanitizeEncoder("Lxv9frHdiqg4WDUkJY5behs8SanXT6cRPuzoG2MV7BmKCyFQN1ZjwApt3E")
+
 // SanitizeEncode 针对于任意类型进行脱敏编码
 func SanitizeEncode(v any) (string, error) {
 	return sanitizeEncoder.Encode(v)
@@ -91,34 +93,4 @@ func SanitizeEncode(v any) (string, error) {
 // SanitizeDecode 解码脱敏后的编码值
 func SanitizeDecode(encoded string, v any) error {
 	return sanitizeEncoder.Decode(encoded, v)
-}
-
-var sanitizeEncoder = NewSanitizeEncoder("Lxv9frHdiqg4WDUkJY5behs8SanXT6cRPuzoG2MV7BmKCyFQN1ZjwApt3E")
-
-// SanitizeEncoder 使用msgpack对任意类型进行序列化，之后使用自定义码集的base58进行编码，如果数据不想直接展示出来，可使用这种方式
-// 进行编解码，从而起到脱敏的效果，且编码出的内容比较短，注意这只起到脱敏的效果，并不是安全地加解密操作
-type SanitizeEncoder struct {
-	alphabet *base58.Alphabet // 编码码集
-}
-
-func NewSanitizeEncoder(alphabet string) *SanitizeEncoder {
-	return &SanitizeEncoder{
-		alphabet: base58.NewAlphabet(alphabet),
-	}
-}
-
-func (enc *SanitizeEncoder) Encode(v any) (string, error) {
-	bytes, err := MsgpackMarshal(v)
-	if err != nil {
-		return "", err
-	}
-	return base58.FastBase58EncodingAlphabet(bytes, enc.alphabet), nil
-}
-
-func (enc *SanitizeEncoder) Decode(encoded string, v any) error {
-	bytes, err := base58.FastBase58DecodingAlphabet(encoded, enc.alphabet)
-	if err != nil {
-		return err
-	}
-	return MsgpackUnmarshal(bytes, v)
 }

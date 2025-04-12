@@ -1,9 +1,6 @@
 package uid
 
 import (
-	"encoding/binary"
-	"fmt"
-	"github.com/dchest/siphash"
 	"github.com/google/uuid"
 	"github.com/haysons/gokit/encode"
 	"github.com/rs/xid"
@@ -38,7 +35,13 @@ func XID() string {
 	return xid.New().String()
 }
 
-// NumericUID 基于唯一值（如自增主键）得到整型的uid，默认uid范围位于闭区间100_000_000至999_999_999之间
+var numericUIDGenerator *NumericUIDGenerator
+
+func init() {
+	numericUIDGenerator, _ = NewNumericUIDGenerator(100_000_000, 999_999_999, 193764502379472, 546271840266420)
+}
+
+// NumericUID 基于唯一值（如自增主键）得到整型的uid，同一个唯一值得到的uid是相同的，默认uid范围位于闭区间100_000_000至999_999_999之间
 func NumericUID(id uint64) uint64 {
 	return numericUIDGenerator.Generate(id)
 }
@@ -47,40 +50,4 @@ func NumericUID(id uint64) uint64 {
 func NumericUIDNano() uint64 {
 	nano := time.Now().UnixNano()
 	return numericUIDGenerator.Generate(uint64(nano))
-}
-
-var numericUIDGenerator *NumericUIDGenerator
-
-func init() {
-	numericUIDGenerator, _ = NewNumericUIDGenerator(100_000_000, 999_999_999, 193764502379472, 546271840266420)
-}
-
-// NumericUIDGenerator 整形uid生成器
-type NumericUIDGenerator struct {
-	minUID    uint64
-	maxUID    uint64
-	rangeSize uint64
-	key1      uint64
-	key2      uint64
-}
-
-func NewNumericUIDGenerator(min, max, key1, key2 uint64) (*NumericUIDGenerator, error) {
-	if min > max {
-		return nil, fmt.Errorf("invalid range [%d, %d]", min, max)
-	}
-	return &NumericUIDGenerator{
-		minUID:    min,
-		maxUID:    max,
-		rangeSize: max - min + 1,
-		key1:      key1,
-		key2:      key2,
-	}, nil
-}
-
-// Generate 基于唯一id生成数字uid，数字uid范围位于闭区间[minUID, maxUID]之间
-func (g *NumericUIDGenerator) Generate(ID uint64) uint64 {
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], ID)
-	hashed := siphash.Hash(g.key1, g.key2, buf[:])
-	return (hashed % g.rangeSize) + g.minUID
 }
