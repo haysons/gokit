@@ -3,6 +3,7 @@ module github.com/haysons/gokit
 go 1.23.0
 
 require (
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/dchest/siphash v1.2.3
 	github.com/google/uuid v1.6.0

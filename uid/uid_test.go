@@ -1,8 +1,10 @@
 package uid
 
 import (
+	"github.com/bwmarrin/snowflake"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestUUID(t *testing.T) {
@@ -28,6 +30,26 @@ func TestUUIDBase58(t *testing.T) {
 func TestXID(t *testing.T) {
 	xid := XID()
 	assert.Len(t, xid, 20, "XID length should be 20 characters")
+}
+
+func TestSnowflakeNode(t *testing.T) {
+	node := SnowflakeNode()
+	maxNode := int64((1 << snowflake.NodeBits) - 1)
+	assert.True(t, node >= 0 && node <= maxNode, "SnowflakeNode should be within the valid range [0, maxNode]")
+}
+
+func TestSnowflakeIDGeneration(t *testing.T) {
+	id1 := SnowflakeID()
+	id2 := SnowflakeID()
+	id3 := SnowflakeID()
+
+	assert.NotEqual(t, id1, id2, "Consecutive SnowflakeIDs should be unique")
+	assert.NotEqual(t, id2, id3, "Consecutive SnowflakeIDs should be unique")
+	assert.NotEqual(t, id1, id3, "Consecutive SnowflakeIDs should be unique")
+
+	time.Sleep(1 * time.Millisecond)
+	id4 := SnowflakeID()
+	assert.True(t, id3 < id4, "SnowflakeIDs should be generated in increasing order given a time gap")
 }
 
 func TestNumericUID(t *testing.T) {

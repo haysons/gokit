@@ -1,6 +1,8 @@
 package uid
 
 import (
+	"fmt"
+	"github.com/bwmarrin/snowflake"
 	"github.com/google/uuid"
 	"github.com/haysons/gokit/encode"
 	"github.com/rs/xid"
@@ -33,6 +35,33 @@ func UUIDBase58() string {
 // XID 生成xid，xid相较于uuid占用空间更少，20字符，生成速度更快，但基于时间自增，可被推测，存在一定的安全问题
 func XID() string {
 	return xid.New().String()
+}
+
+var snowflakeNode *snowflake.Node
+
+func init() {
+	// 自2020年1月1日计算，可使用至2090年
+	snowflake.Epoch = 1577808000000
+	var err error
+	node := SnowflakeNode()
+	snowflakeNode, err = snowflake.NewNode(node)
+	if err != nil {
+		panic(fmt.Sprintf("generate snowflake node failed: %v", err))
+	}
+}
+
+// SnowflakeID 生成雪花id
+func SnowflakeID() snowflake.ID {
+	return snowflakeNode.Generate()
+}
+
+// SnowflakeNode 返回当前机器的节点编号，由于默认情况下雪花算法只有10bit节点号，使用这种默认生成的节点编号，有比较大的概率会重复
+func SnowflakeNode() int64 {
+	bits := snowflake.NodeBits
+	length := int(bits)/8 + 1
+	node := MachineIDInt(length)
+	node = node & ((1 << bits) - 1)
+	return int64(node)
 }
 
 var numericUIDGenerator *NumericUIDGenerator
