@@ -15,12 +15,12 @@ import (
 
 // NewWithCode 创建带有业务状态码的错误
 func NewWithCode(code int, msg string) error {
-	return &withCode{cause: New(msg), code: code}
+	return &withCode{cause: errors.NewWithDepth(1, msg), code: code}
 }
 
-// NewfWithCode 使用格式化方式创建带有业务状态码的错误
-func NewfWithCode(code int, format string, args ...any) error {
-	return &withCode{cause: Newf(format, args...)}
+// NewWithCodef 使用格式化方式创建带有业务状态码的错误
+func NewWithCodef(code int, format string, args ...any) error {
+	return &withCode{cause: errors.NewWithDepthf(1, format, args...), code: code}
 }
 
 // WithCode 为错误附加业务状态码，业务状态码相同时，则直接认为是同一个错误

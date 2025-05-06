@@ -25,7 +25,7 @@ func TestWrapAndWrapf_Unwrap_Cause(t *testing.T) {
 	w1 := Wrap(orig, "context")
 	assert.NotNil(t, w1)
 	assert.Equal(t, "context: root cause", w1.Error())
-	assert.Equal(t, orig, Cause(w1))
+	assert.Equal(t, orig, Cause(Unwrap(w1)))
 
 	w2 := Wrapf(w1, "more %s", "info")
 	assert.NotNil(t, w2)
@@ -36,12 +36,14 @@ func TestWrapAndWrapf_Unwrap_Cause(t *testing.T) {
 func TestIs(t *testing.T) {
 	errA := New("foo")
 	errB := New("bar")
+	errC := New("bar")
 	wrappedA := Wrap(errA, "ctx")
 
 	assert.True(t, Is(errA, errA), "same error should be Is")
 	assert.False(t, Is(errA, errB), "different errors not Is")
 	assert.True(t, Is(wrappedA, errA), "wrapped contains target")
 	assert.False(t, Is(wrappedA, errB), "wrapped does not contain non-target")
+	assert.True(t, Is(errB, errC))
 }
 
 type MyErr struct{ msg string }
