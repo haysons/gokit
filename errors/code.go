@@ -8,7 +8,6 @@ import (
 	"github.com/cockroachdb/errors/extgrpc"
 	"github.com/cockroachdb/errors/exthttp"
 	"github.com/cockroachdb/errors/markers"
-	"github.com/cockroachdb/redact"
 	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc/codes"
 )
@@ -73,20 +72,13 @@ type withCode struct {
 	code  int
 }
 
-func (w *withCode) Error() string { return fmt.Sprintf("code=%d: %s", w.code, w.cause.Error()) }
+func (w *withCode) Error() string { return fmt.Sprintf("code=%d, %v", w.code, w.cause) }
 
 func (w *withCode) Cause() error { return w.cause }
 
 func (w *withCode) Unwrap() error { return w.cause }
 
 func (w *withCode) Format(s fmt.State, verb rune) { errors.FormatError(w, s, verb) }
-
-func (w *withCode) SafeFormatError(p errors.Printer) (next error) {
-	if p.Detail() {
-		p.Printf("code=%d", redact.Safe(w.code))
-	}
-	return w.cause
-}
 
 func (w *withCode) Is(target error) bool {
 	if c, ok := markers.If(target, func(err error) (any, bool) {

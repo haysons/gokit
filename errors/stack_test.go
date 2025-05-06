@@ -18,10 +18,12 @@ func TestWithStackAndGetStackTrace(t *testing.T) {
 
 	wrapErr := demo2()
 	trace = GetStackTrace(wrapErr)
+	t.Logf("source: %v", GetSource(wrapErr))
 	t.Logf("%+v\n\n", trace)
 
 	codeErr := NewWithCode(1001, "something failed")
 	wrapErr = Wrap(codeErr, "wrap code")
+	t.Logf("source: %v", GetSource(wrapErr))
 	trace = GetStackTrace(wrapErr)
 	t.Logf("%+v", trace)
 }
