@@ -80,18 +80,6 @@ func (w *withCode) Unwrap() error { return w.cause }
 
 func (w *withCode) Format(s fmt.State, verb rune) { errors.FormatError(w, s, verb) }
 
-func (w *withCode) Is(target error) bool {
-	if c, ok := markers.If(target, func(err error) (any, bool) {
-		if e, ok := err.(*withCode); ok {
-			return e.code, true
-		}
-		return nil, false
-	}); ok {
-		return c.(int) == w.code
-	}
-	return false
-}
-
 func encodeWithCode(_ context.Context, err error) (string, []string, proto.Message) {
 	w := err.(*withCode)
 	details := []string{fmt.Sprintf("code: %d", w.code)}

@@ -64,38 +64,3 @@ func TestEncodeDecodeWithCode(t *testing.T) {
 	assert.Equal(t, "encoded error", Cause(decoded).Error())
 	assert.True(t, errors.Is(decoded, orig))
 }
-
-func TestWithCode_Is(t *testing.T) {
-	err1 := New("original error")
-	err2 := WithCode(err1, 1001)
-
-	target := &withCode{code: 1001}
-	assert.True(t, errors.Is(err2, target), "code match should be considered equal")
-
-	nonMatch := &withCode{code: 9999}
-	assert.False(t, errors.Is(err2, nonMatch), "code mismatch should not be equal")
-}
-
-func TestWithCode_Is_MultipleLayers(t *testing.T) {
-	base := New("deep error")
-	wrapped := Wrap(base, "wrap1")
-	err := WithCode(wrapped, 2002)
-
-	target := &withCode{code: 2002}
-	assert.True(t, errors.Is(err, target), "deep wrapped error should match by code")
-}
-
-func TestWithCode_Is_WithJoin(t *testing.T) {
-	err1 := WithCode(New("first"), 3001)
-	err2 := WithCode(New("second"), 4002)
-	joined := errors.Join(err1, err2)
-
-	target := &withCode{code: 3001}
-	assert.True(t, errors.Is(joined, target), "should match first joined error by code")
-
-	target2 := &withCode{code: 4002}
-	assert.True(t, errors.Is(joined, target2), "should match second joined error by code")
-
-	target3 := &withCode{code: 9999}
-	assert.False(t, errors.Is(joined, target3), "should not match unrelated code")
-}

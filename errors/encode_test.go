@@ -22,9 +22,6 @@ func TestEncodeDecodeError(t *testing.T) {
 	assert.Contains(t, decoded.Error(), "encode decode test")
 	assert.Equal(t, GetCode(decoded), 1001)
 
-	target := &withCode{code: 1001}
-	assert.True(t, errors.Is(decoded, target), "Decoded error should be identified as same by code")
-
 	original = New("org")
 	encoded = EncodeError(ctx, original)
 	decoded = DecodeError(ctx, encoded)

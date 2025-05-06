@@ -32,12 +32,12 @@ func Wrapf(err error, format string, args ...any) error {
 	return errors.WrapWithDepthf(1, err, format, args...)
 }
 
-// Unwrap 解包一层错
+// Unwrap 解包一层错误
 func Unwrap(err error) error {
 	return errors.Unwrap(err)
 }
 
-// Cause 完整解包错误，并得到最内层错误
+// Cause 完整解包错误，得到最内层错误
 func Cause(err error) error {
 	return errors.Cause(err)
 }
