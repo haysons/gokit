@@ -22,14 +22,26 @@ func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
-// Wrap 使用msg作为前缀包装错误，并附加堆栈信息
+// Wrap 使用msg作为前缀包装错误，并附加堆栈信息，此堆栈信息会覆盖原本错误中的堆栈信息
+// 若仅是为了给错误添加上下文信息，应当使用 WithMessage
 func Wrap(err error, msg string) error {
 	return errors.WrapWithDepth(1, err, msg)
 }
 
-// Wrapf 使用格式化字符串作为前缀包装错误，并附加堆栈信息
+// Wrapf 使用格式化字符串作为前缀包装错误，并附加堆栈信息，此堆栈信息会覆盖原本错误中的堆栈信息
+// 若仅是为了给错误添加上下文信息，应当使用 WithMessagef
 func Wrapf(err error, format string, args ...any) error {
 	return errors.WrapWithDepthf(1, err, format, args...)
+}
+
+// WithMessage 为错误附加上下文信息
+func WithMessage(err error, msg string) error {
+	return errors.WithMessage(err, msg)
+}
+
+// WithMessagef 使用格式化字符串为错误附加上下文信息
+func WithMessagef(err error, format string, args ...any) error {
+	return errors.WithMessagef(err, format, args...)
 }
 
 // Unwrap 解包一层错误

@@ -6,7 +6,6 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cockroachdb/errors v1.11.3
-	github.com/cockroachdb/redact v1.1.5
 	github.com/dchest/siphash v1.2.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.6.0
@@ -22,6 +21,7 @@ require (
 
 require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
+	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect

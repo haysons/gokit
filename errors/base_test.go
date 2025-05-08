@@ -33,6 +33,24 @@ func TestWrapAndWrapf_Unwrap_Cause(t *testing.T) {
 	assert.Equal(t, orig, Cause(w2))
 }
 
+func TestWithMessage(t *testing.T) {
+	origErr := errors.New("original error")
+	wrapped := WithMessage(origErr, "context added")
+
+	assert.Error(t, wrapped)
+	assert.EqualError(t, wrapped, "context added: original error")
+	assert.True(t, errors.Is(wrapped, origErr), "wrapped error should match original with errors.Is")
+}
+
+func TestWithMessagef(t *testing.T) {
+	origErr := errors.New("read failed")
+	wrapped := WithMessagef(origErr, "operation %s on file %s", "read", "/tmp/data.txt")
+
+	assert.Error(t, wrapped)
+	assert.EqualError(t, wrapped, "operation read on file /tmp/data.txt: read failed")
+	assert.True(t, errors.Is(wrapped, origErr), "wrapped error should match original with errors.Is")
+}
+
 func TestIs(t *testing.T) {
 	errA := New("foo")
 	errB := New("bar")
