@@ -3,6 +3,8 @@ package errors
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc/codes"
+	"net/http"
 	"testing"
 
 	cerrors "github.com/cockroachdb/errors"
@@ -97,4 +99,41 @@ func TestIntegrationWithCockroachErrors(t *testing.T) {
 	enc := cerrors.EncodeError(context.Background(), wrapped)
 	dec := cerrors.DecodeError(context.Background(), enc)
 	assert.True(t, cerrors.Is(dec, orig))
+}
+
+func TestNewBiz(t *testing.T) {
+	code := 1001
+	hint := "请检查输入参数"
+	msg := "参数无效"
+
+	err := NewBiz(code, hint, msg)
+	assert.Error(t, err)
+
+	// 检查 error 消息是否匹配
+	assert.Contains(t, err.Error(), msg)
+
+	// 检查附加信息
+	assert.Equal(t, code, GetCode(err))
+	assert.Equal(t, http.StatusOK, GetHttpCode(err, 0))
+	assert.Equal(t, codes.FailedPrecondition, GetGrpcCode(err))
+	assert.Equal(t, hint, GetAllHints(err)[0])
+}
+
+func TestNewBizf(t *testing.T) {
+	code := 1002
+	hint := "用户名不能为空"
+	format := "字段 %s 无效: %s"
+	field := "username"
+	reason := "不能为空"
+
+	err := NewBizf(code, hint, format, field, reason)
+	assert.Error(t, err)
+
+	expectedMsg := "字段 username 无效: 不能为空"
+	assert.Contains(t, err.Error(), expectedMsg)
+
+	assert.Equal(t, code, GetCode(err))
+	assert.Equal(t, http.StatusOK, GetHttpCode(err, 0))
+	assert.Equal(t, codes.FailedPrecondition, GetGrpcCode(err))
+	assert.Equal(t, hint, GetAllHints(err)[0])
 }

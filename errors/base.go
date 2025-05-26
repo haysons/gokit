@@ -1,6 +1,10 @@
 package errors
 
-import "github.com/cockroachdb/errors"
+import (
+	"github.com/cockroachdb/errors"
+	"google.golang.org/grpc/codes"
+	"net/http"
+)
 
 // New 创建一个错误，此错误携带堆栈信息
 func New(msg string) error {
@@ -57,4 +61,24 @@ func Cause(err error) error {
 // Join 将多个错误包装为一个错误
 func Join(errs ...error) error {
 	return errors.Join(errs...)
+}
+
+// NewBiz 快速创建一个业务错误，业务错误一般包含错误信息、状态码及提示信息，
+// 业务错误一般为前置判断异常，故http状态码默认为200，grpc状态码默认为 codes.FailedPrecondition
+func NewBiz(code int, hint string, msg string) error {
+	err := errors.NewWithDepth(1, msg)
+	err = WithCode(err, code)
+	err = WithHttpCode(err, http.StatusOK)
+	err = WithGrpcCode(err, codes.FailedPrecondition)
+	return WithHint(err, hint)
+}
+
+// NewBizf 使用格式化字符串创建一个业务错误，业务错误一般包含错误信息、状态码及提示信息，
+// 业务错误一般为前置判断异常，故http状态码默认为200，grpc状态码默认为 codes.FailedPrecondition
+func NewBizf(code int, hint string, format string, args ...any) error {
+	err := errors.NewWithDepthf(1, format, args...)
+	err = WithCode(err, code)
+	err = WithHttpCode(err, http.StatusOK)
+	err = WithGrpcCode(err, codes.FailedPrecondition)
+	return WithHint(err, hint)
 }
