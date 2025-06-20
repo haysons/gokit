@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"github.com/haysons/gokit/encode"
+	"github.com/haysons/gokit/util/encode"
 	"os"
 	"sync"
 )

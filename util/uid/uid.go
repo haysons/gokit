@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/google/uuid"
-	"github.com/haysons/gokit/encode"
+	"github.com/haysons/gokit/util/encode"
 	"github.com/rs/xid"
 	"time"
 )
