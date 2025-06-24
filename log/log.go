@@ -1,7 +1,8 @@
 package log
 
 import (
-	"github.com/rs/zerolog"
+	"context"
+	"log/slog"
 )
 
 type Config struct {
@@ -12,49 +13,66 @@ type Config struct {
 	ConsoleColor bool   `yaml:"console_color"` // 日志采用终端打印格式时是否包含颜色
 }
 
-// defaultLogger 默认将日志打印至stdout，使用终端格式打印，且包含颜色，开发体验更好，但性能较差，不适于线上使用
-var defaultLogger = NewZeroLogger(&Config{
-	Level:        "info",
-	ConsoleFmt:   true,
-	ConsoleColor: true,
-})
+// 默认将日志打印至stdout，使用终端格式打印，且包含颜色，开发体验更好，但性能较差，不适于线上使用
+func init() {
+	SetDefault(&Config{
+		Level:        "info",
+		ConsoleFmt:   true,
+		ConsoleColor: true,
+	})
+}
 
 // GetDefault 获取默认的日志对象
-func GetDefault() zerolog.Logger {
-	return defaultLogger
+func GetDefault() *slog.Logger {
+	return slog.Default()
 }
 
 // SetDefault 基于配置信息设置默认的日志对象
 func SetDefault(conf *Config) {
-	defaultLogger = NewZeroLogger(conf)
+	slog.SetDefault(NewSlogger(conf))
 }
 
-// Debug 打印debug级别日志
-func Debug() *zerolog.Event {
-	return defaultLogger.Debug()
+// With 为日志附加通用属性
+func With(args ...any) *slog.Logger {
+	return slog.With(args...)
 }
 
-// Info 打印info级别日志
-func Info() *zerolog.Event {
-	return defaultLogger.Info()
+// Debug 打印debug日志
+func Debug(msg string, args ...any) {
+	slog.Debug(msg, args...)
 }
 
-// Warn 打印warn级别日志
-func Warn() *zerolog.Event {
-	return defaultLogger.Warn()
+// DebugCtx 打印debug日志
+func DebugCtx(ctx context.Context, msg string, args ...any) {
+	slog.DebugContext(ctx, msg, args...)
 }
 
-// Error 打印error级别日志
-func Error() *zerolog.Event {
-	return defaultLogger.Error()
+// Info 打印info日志
+func Info(msg string, args ...any) {
+	slog.Info(msg, args...)
 }
 
-// Err 基于err快捷打印一个error日志
-func Err(err error) *zerolog.Event {
-	return defaultLogger.Err(err)
+// InfoCtx 打印info日志
+func InfoCtx(ctx context.Context, msg string, args ...any) {
+	slog.InfoContext(ctx, msg, args...)
 }
 
-// Fatal 打印fatal级别日志
-func Fatal() *zerolog.Event {
-	return defaultLogger.Fatal()
+// Warn 打印warn日志
+func Warn(msg string, args ...any) {
+	slog.Warn(msg, args...)
+}
+
+// WarnCtx 打印warn日志
+func WarnCtx(ctx context.Context, msg string, args ...any) {
+	slog.WarnContext(ctx, msg, args...)
+}
+
+// Error 打印error日志
+func Error(msg string, args ...any) {
+	slog.Error(msg, args...)
+}
+
+// ErrorCtx 打印error日志
+func ErrorCtx(ctx context.Context, msg string, args ...any) {
+	slog.ErrorContext(ctx, msg, args...)
 }

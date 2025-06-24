@@ -3,8 +3,8 @@ package config
 import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/haysons/gokit/log"
-	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -13,7 +13,7 @@ type Config[T any] struct {
 	mu     sync.RWMutex
 	viper  *viper.Viper
 	config T
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 // New 新建 Config 实例, T为配置对应的结构体
@@ -51,7 +51,7 @@ func (c *Config[T]) SetDefault(key string, value any) {
 }
 
 // SetLogger 配置日志组件
-func (c *Config[T]) SetLogger(logger zerolog.Logger) {
+func (c *Config[T]) SetLogger(logger *slog.Logger) {
 	c.logger = logger
 }
 
@@ -87,9 +87,9 @@ func (c *Config[T]) Get() T {
 func (c *Config[T]) Watch() {
 	c.viper.WatchConfig()
 	c.viper.OnConfigChange(func(e fsnotify.Event) {
-		c.logger.Info().Str("file name", e.Name).Msg("config file changed")
+		c.logger.Info("config file changed", slog.String("file name", e.Name))
 		if err := c.unmarshalConfig(); err != nil {
-			c.logger.Err(err).Msg("unmarshal config failed")
+			c.logger.Error("unmarshal config failed", slog.Any("error", err))
 			return
 		}
 	})
@@ -98,6 +98,6 @@ func (c *Config[T]) Watch() {
 func (c *Config[T]) print() {
 	for _, k := range c.viper.AllKeys() {
 		v := c.viper.Get(k)
-		c.logger.Info().Str("key", k).Any("value", v).Msg("config item")
+		c.logger.Info("config item", slog.String("key", k), slog.Any("value", v))
 	}
 }

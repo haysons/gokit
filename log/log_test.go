@@ -2,92 +2,92 @@ package log
 
 import (
 	"bytes"
-	"errors"
-	"os"
-	"os/exec"
-	"testing"
-
-	"github.com/rs/zerolog"
+	"context"
 	"github.com/stretchr/testify/assert"
+	"log/slog"
+	"os"
+	"testing"
 )
 
-func TestLogPrint(t *testing.T) {
-	Debug().Msg("debug")
-	Info().Msg("info")
-	Warn().Msg("warn")
-	Error().Msg("error")
-	Err(errors.New("error")).Msg("error")
-}
+func TestNewSlogger_JSON(t *testing.T) {
+	oldStdout := os.Stdout
+	defer func() { os.Stdout = oldStdout }()
+	r, w, _ := os.Pipe()
+	os.Stdout = w
 
-func TestFatalFunction(t *testing.T) {
-	if os.Getenv("LOG_FATAL_TEST") == "1" {
-		Fatal().Msg("fatal from Fatal() function")
-		return
-	}
-
-	cmd := exec.Command(os.Args[0], "-test.run=TestFatalFunction")
-	cmd.Env = append(os.Environ(), "LOG_FATAL_TEST=1")
-	output, err := cmd.CombinedOutput()
-
-	// 检查是否是非正常退出
-	var exitErr *exec.ExitError
-	ok := errors.As(err, &exitErr)
-	assert.True(t, ok, "expected process to exit due to Fatal()")
-	assert.Equal(t, 1, exitErr.ExitCode(), "expected exit code to be 1 from Fatal()")
-
-	t.Log(string(output))
-	assert.Contains(t, string(output), "fatal from Fatal()", "expected fatal message to appear in output")
-}
-
-func TestDefaultLogger(t *testing.T) {
-	logger := GetDefault()
-	assert.Equal(t, zerolog.InfoLevel, logger.GetLevel(), "expected default log level to be info")
-}
-
-func TestSetDefault(t *testing.T) {
 	conf := &Config{
-		Level:        "debug",
+		Filename:     "",
+		Level:        "info",
 		ConsoleFmt:   false,
 		ConsoleColor: false,
 	}
+	logger := NewSlogger(conf)
+	logger.InfoContext(context.Background(), "json log", slog.String("key", "value"))
+
+	w.Close()
+	var outBuf bytes.Buffer
+	_, _ = outBuf.ReadFrom(r)
+	output := outBuf.String()
+
+	assert.Contains(t, output, `"msg":"json log"`, "should contain message")
+	assert.Contains(t, output, `"key":"value"`, "should contain key attribute")
+}
+
+func TestNewSlogger_ConsoleFmt(t *testing.T) {
+	oldStdout := os.Stdout
+	defer func() { os.Stdout = oldStdout }()
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	conf := &Config{
+		Filename:     "",
+		Level:        "debug",
+		ConsoleFmt:   true,
+		ConsoleColor: false,
+	}
+	logger := NewSlogger(conf)
+	logger.Debug("debug log", slog.String("foo", "bar"))
+
+	w.Close()
+	var outBuf bytes.Buffer
+	_, _ = outBuf.ReadFrom(r)
+	output := outBuf.String()
+
+	t.Log(output)
+	assert.Contains(t, output, "DBG", "should contain DEBUG level")
+	assert.Contains(t, output, "debug log", "should contain debug message")
+	assert.Contains(t, output, "foo=bar", "should contain custom field")
+}
+
+func TestSetDefaultAndGetDefault(t *testing.T) {
+	conf := &Config{
+		Level:        "info",
+		ConsoleFmt:   true,
+		ConsoleColor: true,
+	}
 	SetDefault(conf)
-	logger := GetDefault()
+	ctx := context.Background()
+	slog.Debug("debug log", slog.String("foo", "bar"))
+	slog.Info("info log", slog.String("foo", "bar"))
+	slog.Warn("warn log", slog.String("foo", "bar"))
+	slog.Error("error log", slog.String("foo", "bar"))
+	Debug("debug log", slog.String("foo", "bar"))
+	DebugCtx(ctx, "debug log", slog.String("foo", "bar"))
+	Info("info log", slog.String("foo", "bar"))
+	InfoCtx(ctx, "info log", slog.String("foo", "bar"))
+	Warn("warn log", slog.String("foo", "bar"))
+	WarnCtx(ctx, "warn log", slog.String("foo", "bar"))
+	Error("error log", slog.String("foo", "bar"))
+	ErrorCtx(ctx, "error log", slog.String("foo", "bar"))
 
-	assert.Equal(t, zerolog.DebugLevel, logger.GetLevel(), "expected log level to be debug after SetDefault")
+	logger := With(slog.String("common", "bar"))
+	logger.Info("info log", slog.String("foo", "bar"))
 }
 
-func TestLogLevels(t *testing.T) {
-	var buf bytes.Buffer
-
-	conf := &Config{
-		Level:      "debug",
-		ConsoleFmt: false,
-	}
-	logger := NewZeroLogger(conf).Output(&buf)
-
-	logger.Debug().Msg("debug log")
-	logger.Info().Msg("info log")
-	logger.Warn().Msg("warn log")
-	logger.Error().Msg("error log")
-
-	out := buf.String()
-	assert.Contains(t, out, "debug log", "expected debug log message to be present")
-	assert.Contains(t, out, "info log", "expected info log message to be present")
-	assert.Contains(t, out, "warn log", "expected warn log message to be present")
-	assert.Contains(t, out, "error log", "expected error log message to be present")
-}
-
-func TestLogErr(t *testing.T) {
-	var buf bytes.Buffer
-	conf := &Config{
-		Level:      "debug",
-		ConsoleFmt: false,
-	}
-	logger := NewZeroLogger(conf).Output(&buf)
-
-	logger.Err(errors.New("test error")).Msg("something happened")
-
-	out := buf.String()
-	assert.Contains(t, out, "test error", "expected error message to be present in output")
-	assert.Contains(t, out, "something happened", "expected log message to be present in output")
+func TestParseLevel(t *testing.T) {
+	assert.Equal(t, slog.LevelDebug, parseLevel("debug"))
+	assert.Equal(t, slog.LevelInfo, parseLevel("info"))
+	assert.Equal(t, slog.LevelWarn, parseLevel("warn"))
+	assert.Equal(t, slog.LevelError, parseLevel("error"))
+	assert.Equal(t, slog.LevelInfo, parseLevel("invalid")) // 默认值
 }
