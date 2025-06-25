@@ -1,7 +1,6 @@
 package log
 
 import (
-	"context"
 	"log/slog"
 )
 
@@ -15,64 +14,19 @@ type Config struct {
 
 // 默认将日志打印至stdout，使用终端格式打印，且包含颜色，开发体验更好，但性能较差，不适于线上使用
 func init() {
-	SetDefault(&Config{
+	SetDefaultSlog(&Config{
 		Level:        "info",
 		ConsoleFmt:   true,
 		ConsoleColor: true,
 	})
 }
 
-// GetDefault 获取默认的日志对象
-func GetDefault() *slog.Logger {
+// GetDefaultSlog 获取默认的日志对象
+func GetDefaultSlog() *slog.Logger {
 	return slog.Default()
 }
 
-// SetDefault 基于配置信息设置默认的日志对象
-func SetDefault(conf *Config) {
+// SetDefaultSlog 基于配置信息设置默认的日志对象
+func SetDefaultSlog(conf *Config) {
 	slog.SetDefault(NewSlogger(conf))
-}
-
-// With 为日志附加通用属性
-func With(args ...any) *slog.Logger {
-	return slog.With(args...)
-}
-
-// Debug 打印debug日志
-func Debug(msg string, args ...any) {
-	slog.Debug(msg, args...)
-}
-
-// DebugCtx 打印debug日志
-func DebugCtx(ctx context.Context, msg string, args ...any) {
-	slog.DebugContext(ctx, msg, args...)
-}
-
-// Info 打印info日志
-func Info(msg string, args ...any) {
-	slog.Info(msg, args...)
-}
-
-// InfoCtx 打印info日志
-func InfoCtx(ctx context.Context, msg string, args ...any) {
-	slog.InfoContext(ctx, msg, args...)
-}
-
-// Warn 打印warn日志
-func Warn(msg string, args ...any) {
-	slog.Warn(msg, args...)
-}
-
-// WarnCtx 打印warn日志
-func WarnCtx(ctx context.Context, msg string, args ...any) {
-	slog.WarnContext(ctx, msg, args...)
-}
-
-// Error 打印error日志
-func Error(msg string, args ...any) {
-	slog.Error(msg, args...)
-}
-
-// ErrorCtx 打印error日志
-func ErrorCtx(ctx context.Context, msg string, args ...any) {
-	slog.ErrorContext(ctx, msg, args...)
 }

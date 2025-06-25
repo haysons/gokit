@@ -20,7 +20,7 @@ type Config[T any] struct {
 func New[T any]() *Config[T] {
 	return &Config[T]{
 		viper:  viper.New(),
-		logger: log.GetDefault(),
+		logger: log.GetDefaultSlog(),
 	}
 }
 

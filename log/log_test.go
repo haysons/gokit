@@ -65,23 +65,11 @@ func TestSetDefaultAndGetDefault(t *testing.T) {
 		ConsoleFmt:   true,
 		ConsoleColor: true,
 	}
-	SetDefault(conf)
-	ctx := context.Background()
+	SetDefaultSlog(conf)
 	slog.Debug("debug log", slog.String("foo", "bar"))
 	slog.Info("info log", slog.String("foo", "bar"))
 	slog.Warn("warn log", slog.String("foo", "bar"))
 	slog.Error("error log", slog.String("foo", "bar"))
-	Debug("debug log", slog.String("foo", "bar"))
-	DebugCtx(ctx, "debug log", slog.String("foo", "bar"))
-	Info("info log", slog.String("foo", "bar"))
-	InfoCtx(ctx, "info log", slog.String("foo", "bar"))
-	Warn("warn log", slog.String("foo", "bar"))
-	WarnCtx(ctx, "warn log", slog.String("foo", "bar"))
-	Error("error log", slog.String("foo", "bar"))
-	ErrorCtx(ctx, "error log", slog.String("foo", "bar"))
-
-	logger := With(slog.String("common", "bar"))
-	logger.Info("info log", slog.String("foo", "bar"))
 }
 
 func TestParseLevel(t *testing.T) {
