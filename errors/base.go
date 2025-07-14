@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"encoding/json"
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc/codes"
 	"net/http"
@@ -61,6 +62,24 @@ func Cause(err error) error {
 // Join 将多个错误包装为一个错误
 func Join(errs ...error) error {
 	return errors.Join(errs...)
+}
+
+type errorFormat struct {
+	Message string   `json:"message"`
+	Stack   []string `json:"stack"`
+}
+
+// Format 获取格式化错误信息，便于统一打印日志结构
+func Format(err error) string {
+	if err == nil {
+		return ""
+	}
+	f := &errorFormat{
+		Message: err.Error(),
+		Stack:   GetStack(err),
+	}
+	bytes, _ := json.Marshal(f)
+	return string(bytes)
 }
 
 // NewBiz 快速创建一个业务错误，业务错误一般包含错误信息、状态码及提示信息，

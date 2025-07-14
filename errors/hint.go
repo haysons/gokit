@@ -14,6 +14,15 @@ func WithHintf(err error, format string, args ...any) error {
 	return errors.WithHintf(err, format, args...)
 }
 
+// GetHint 获取错误中包含的最后一条提示信息
+func GetHint(err error) string {
+	hints := GetAllHints(err)
+	if len(hints) == 0 {
+		return ""
+	}
+	return hints[len(hints)-1]
+}
+
 // GetAllHints 获取错误中包含的全部提示信息
 func GetAllHints(err error) []string {
 	return errors.GetAllHints(err)

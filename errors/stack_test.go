@@ -19,8 +19,11 @@ func TestWithStackAndGetStackTrace(t *testing.T) {
 	assert.Greater(t, len(trace), 0, "stack trace should not be empty")
 
 	wrapErr := demo2()
-	trace = GetStackTrace(wrapErr)
-	t.Logf("%+v", trace)
+	stack := GetStack(wrapErr)
+	stack = stack[:3]
+	assert.Equal(t, []string{"stack_test.go:35 demo1", "stack_test.go:30 demo2", "stack_test.go:21 TestWithStackAndGetStackTrace"}, stack)
+	stack = GetStack(errors.New("something failed"))
+	assert.Len(t, stack, 0)
 }
 
 func demo2() error {

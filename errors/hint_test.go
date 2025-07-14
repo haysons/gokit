@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,4 +44,14 @@ func TestMultipleHints(t *testing.T) {
 	flat := FlattenHints(err)
 	assert.Contains(t, flat, "check your credentials")
 	assert.Contains(t, flat, "ensure the DB is reachable")
+
+	hint := GetHint(err)
+	assert.Equal(t, "ensure the DB is reachable", hint)
+
+	err = WithHint(err, "check your address")
+	hint = GetHint(err)
+	assert.Equal(t, "check your address", hint)
+
+	hint = GetHint(errors.New("some other error"))
+	assert.Equal(t, "", hint)
 }

@@ -90,6 +90,13 @@ func TestJoin(t *testing.T) {
 	assert.True(t, Is(joined, e2))
 }
 
+func TestFormat(t *testing.T) {
+	assert.Equal(t, "", Format(nil))
+	err := demo2()
+	errFormatted := Format(err)
+	t.Log(errFormatted)
+}
+
 func TestIntegrationWithCockroachErrors(t *testing.T) {
 	// ensure our Wrap/New behave like cockroachdb/errors
 	orig := cerrors.New("orig")
