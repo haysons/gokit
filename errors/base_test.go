@@ -3,7 +3,9 @@ package errors
 import (
 	"context"
 	"errors"
+	"github.com/haysons/gokit/log"
 	"google.golang.org/grpc/codes"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -90,11 +92,19 @@ func TestJoin(t *testing.T) {
 	assert.True(t, Is(joined, e2))
 }
 
-func TestFormat(t *testing.T) {
-	assert.Equal(t, "", Format(nil))
+func TestMarshal(t *testing.T) {
+	assert.Nil(t, Marshal(nil))
 	err := demo2()
-	errFormatted := Format(err)
-	t.Log(errFormatted)
+	errMarshal := Marshal(err)
+	log.SetDefaultSlog(&log.Config{
+		ConsoleFmt:   true,
+		ConsoleColor: true,
+	})
+	slog.Error("something failed", "err", errMarshal)
+	log.SetDefaultSlog(&log.Config{
+		ConsoleFmt: false,
+	})
+	slog.Error("something failed", "err", errMarshal)
 }
 
 func TestIntegrationWithCockroachErrors(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc/codes"
 	"net/http"
+	"strings"
 )
 
 // New 创建一个错误，此错误携带堆栈信息
@@ -64,22 +65,43 @@ func Join(errs ...error) error {
 	return errors.Join(errs...)
 }
 
-type errorFormat struct {
+// Marshal 获取错误的序列化信息，统一日志结构
+func Marshal(err error) *ErrorMarshal {
+	if err == nil {
+		return nil
+	}
+	return &ErrorMarshal{
+		Message: err.Error(),
+		Stack:   GetStack(err),
+	}
+}
+
+type ErrorMarshal struct {
 	Message string   `json:"message"`
 	Stack   []string `json:"stack"`
 }
 
-// Format 获取格式化错误信息，便于统一打印日志结构
-func Format(err error) string {
-	if err == nil {
-		return ""
+func (e ErrorMarshal) MarshalJSON() ([]byte, error) {
+	if e.Message == "" {
+		return []byte("null"), nil
 	}
-	f := &errorFormat{
-		Message: err.Error(),
-		Stack:   GetStack(err),
+	return json.Marshal(map[string]any{
+		"message": e.Message,
+		"stack":   e.Stack,
+	})
+}
+
+func (e ErrorMarshal) MarshalText() ([]byte, error) {
+	if e.Message == "" {
+		return []byte{}, nil
 	}
-	bytes, _ := json.Marshal(f)
-	return string(bytes)
+	builder := strings.Builder{}
+	builder.WriteString(e.Message)
+	if len(e.Stack) > 0 {
+		builder.WriteString("; stack: ")
+		builder.WriteString(strings.Join(e.Stack, ", "))
+	}
+	return []byte(builder.String()), nil
 }
 
 // NewBiz 快速创建一个业务错误，业务错误一般包含错误信息、状态码及提示信息，
