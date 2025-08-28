@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+
 	"github.com/mr-tron/base58"
 	"github.com/vmihailenco/msgpack/v5"
 )

@@ -3,6 +3,7 @@ package uid
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/dchest/siphash"
 )
 

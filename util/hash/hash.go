@@ -1,8 +1,9 @@
 package hash
 
 import (
-	"github.com/cespare/xxhash/v2"
 	"hash/crc32"
+
+	"github.com/cespare/xxhash/v2"
 )
 
 // RangeHash 对data取哈希值，哈希值最终位于闭区间[min, max]之间，非密码学安全，主要用于哈希分片相关

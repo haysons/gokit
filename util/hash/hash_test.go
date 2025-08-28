@@ -1,10 +1,11 @@
 package hash
 
 import (
-	"github.com/stretchr/testify/assert"
 	"hash/crc32"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHashInRange(t *testing.T) {

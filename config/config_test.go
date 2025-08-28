@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/haysons/gokit/config"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type ServerConfig struct {

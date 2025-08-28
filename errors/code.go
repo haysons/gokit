@@ -3,6 +3,7 @@ package errors
 import (
 	"context"
 	"fmt"
+
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/errors/errbase"
 	"github.com/cockroachdb/errors/extgrpc"

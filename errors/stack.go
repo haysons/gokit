@@ -2,11 +2,12 @@ package errors
 
 import (
 	"fmt"
-	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/errors/errbase"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/errors/errbase"
 )
 
 // WithStack 为错误附加堆栈信息，此堆栈信息会覆盖原本错误中的堆栈信息

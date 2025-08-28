@@ -3,14 +3,14 @@ package errors
 import (
 	"context"
 	"errors"
-	"github.com/haysons/gokit/log"
-	"google.golang.org/grpc/codes"
 	"log/slog"
 	"net/http"
 	"testing"
 
 	cerrors "github.com/cockroachdb/errors"
+	"github.com/haysons/gokit/log"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
 )
 
 func TestNewAndNewf(t *testing.T) {

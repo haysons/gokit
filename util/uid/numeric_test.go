@@ -1,8 +1,9 @@
 package uid
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNumericUIDGenerator(t *testing.T) {

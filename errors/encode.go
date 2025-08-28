@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+
 	"github.com/cockroachdb/errors"
 )
 

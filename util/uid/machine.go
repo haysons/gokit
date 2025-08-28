@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"github.com/haysons/gokit/util/encode"
 	"os"
 	"sync"
+
+	"github.com/haysons/gokit/util/encode"
 )
 
 var machineIDGenerator = NewMachineIDGenerator()

@@ -1,13 +1,14 @@
 package log
 
 import (
-	"github.com/lmittmann/tint"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/lmittmann/tint"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // NewSlogger 创建slog对象

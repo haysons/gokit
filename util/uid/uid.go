@@ -2,11 +2,12 @@ package uid
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/bwmarrin/snowflake"
 	"github.com/google/uuid"
 	"github.com/haysons/gokit/util/encode"
 	"github.com/rs/xid"
-	"time"
 )
 
 // UUID 生成 google v4 uuid，36字符

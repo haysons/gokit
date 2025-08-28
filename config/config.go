@@ -1,12 +1,13 @@
 package config
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/haysons/gokit/log"
-	"github.com/spf13/viper"
 	"log/slog"
 	"strings"
 	"sync"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/haysons/gokit/log"
+	"github.com/spf13/viper"
 )
 
 type Config[T any] struct {

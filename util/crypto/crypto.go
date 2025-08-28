@@ -13,10 +13,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"io"
+
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
-	"io"
 )
 
 // AESEncrypt 进行AES-GCM加密，nonce放置于密文之前

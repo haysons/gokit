@@ -1,10 +1,11 @@
 package uid
 
 import (
-	"github.com/bwmarrin/snowflake"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/bwmarrin/snowflake"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUUID(t *testing.T) {

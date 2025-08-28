@@ -2,10 +2,11 @@ package errors
 
 import (
 	"encoding/json"
-	"github.com/cockroachdb/errors"
-	"google.golang.org/grpc/codes"
 	"net/http"
 	"strings"
+
+	"github.com/cockroachdb/errors"
+	"google.golang.org/grpc/codes"
 )
 
 // New 创建一个错误，此错误携带堆栈信息

@@ -3,10 +3,11 @@ package log
 import (
 	"bytes"
 	"context"
-	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewSlogger_JSON(t *testing.T) {

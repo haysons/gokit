@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rs/xid"
-	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/concurrency"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/rs/xid"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
 // Election 是伴随应用程序始终的选举对象，针对于etcd选举对象进行了更多的异常处理，在某次选举出现异常时，会发起新的选举
