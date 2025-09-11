@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
+	"errors"
 	"net/http"
 	"time"
 
@@ -16,6 +18,7 @@ type ServerConfig struct {
 	WriteTimeout      time.Duration `mapstructure:"write_timeout"`       // 写响应的超时时间
 	IdleTimeout       time.Duration `mapstructure:"idle_timeout"`        // Keep-Alive 空闲超时时间
 
+	tlsConf    *tls.Config              // tls 配置
 	muxOptions []runtime.ServeMuxOption // grpc-gateway mux 需要用到配置项
 }
 
@@ -64,6 +67,13 @@ func WithIdleTimeout(timeout time.Duration) ServerOption {
 	}
 }
 
+// WithTLSConfig 配置 tls 加密相关
+func WithTLSConfig(cfg *tls.Config) ServerOption {
+	return func(c *ServerConfig) {
+		c.tlsConf = cfg
+	}
+}
+
 // WithMuxOptions 配置 grpc-gateway mux 相关
 func WithMuxOptions(opts ...runtime.ServeMuxOption) ServerOption {
 	return func(c *ServerConfig) {
@@ -74,6 +84,7 @@ func WithMuxOptions(opts ...runtime.ServeMuxOption) ServerOption {
 type Server struct {
 	httpSrv *http.Server
 	mux     *runtime.ServeMux
+	cfg     *ServerConfig
 }
 
 // NewServer 创建 http 服务器
@@ -93,10 +104,12 @@ func NewServer(opts ...ServerOption) *Server {
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
 		IdleTimeout:       cfg.IdleTimeout,
+		TLSConfig:         cfg.tlsConf,
 	}
 	return &Server{
 		httpSrv: httpSrv,
 		mux:     mux,
+		cfg:     cfg,
 	}
 }
 
@@ -106,11 +119,28 @@ func (s *Server) GetMux() *runtime.ServeMux {
 }
 
 // Start 启动 http 服务器
-func (s *Server) Start(ctx context.Context) error {
-	return s.httpSrv.ListenAndServe()
+func (s *Server) Start(_ context.Context) error {
+	var err error
+	if s.cfg.tlsConf != nil {
+		err = s.httpSrv.ListenAndServeTLS("", "")
+	} else {
+		err = s.httpSrv.ListenAndServe()
+	}
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 // Stop 停止 http 服务器
 func (s *Server) Stop(ctx context.Context) error {
-	return s.httpSrv.Shutdown(ctx)
+	// 优先使用 Shutdown 优雅关闭，此方法会判断 ctx
+	err := s.httpSrv.Shutdown(ctx)
+	if err != nil {
+		// 优雅关闭超时，强行关闭
+		if ctx.Err() != nil {
+			err = s.httpSrv.Close()
+		}
+	}
+	return err
 }
