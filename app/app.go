@@ -2,14 +2,17 @@ package app
 
 import (
 	"context"
+	"log/slog"
 
+	"github.com/haysons/gokit/log"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 )
 
 type Config struct {
 	Name    string `mapstructure:"name"`    // app 名称
 	Version string `mapstructure:"version"` // app 版本
-	Commit  string `mapstructure:"commit"`  // 程序提交号
+	Commit  string `mapstructure:"commit"`  // git 提交号
 
 	fxOptions []fx.Option // uber fx 配置项
 }
@@ -20,7 +23,9 @@ type Option func(*Config)
 // WithConfig 整体替换配置
 func WithConfig(cfg Config) Option {
 	return func(c *Config) {
+		fxOpts := c.fxOptions
 		*c = cfg
+		c.fxOptions = append(c.fxOptions, fxOpts...)
 	}
 }
 
@@ -38,7 +43,7 @@ func WithVersion(v string) Option {
 	}
 }
 
-// WithCommit 配置应用提交号
+// WithCommit 配置 git 提交号
 func WithCommit(commit string) Option {
 	return func(c *Config) {
 		c.Commit = commit
@@ -46,9 +51,23 @@ func WithCommit(commit string) Option {
 }
 
 // WithProvides 配置服务提供者，用于依赖注入
-func WithProvides(provide ...fx.Option) Option {
+func WithProvides(provides ...fx.Option) Option {
 	return func(c *Config) {
-		c.fxOptions = append(c.fxOptions)
+		c.fxOptions = append(c.fxOptions, provides...)
+	}
+}
+
+// WithInvokes 配置 fx.Invoke（初始化逻辑）
+func WithInvokes(invokes ...fx.Option) Option {
+	return func(c *Config) {
+		c.fxOptions = append(c.fxOptions, invokes...)
+	}
+}
+
+// WithModules 配置模块（模块 = fx.Option）
+func WithModules(mods ...fx.Option) Option {
+	return func(c *Config) {
+		c.fxOptions = append(c.fxOptions, mods...)
 	}
 }
 
@@ -67,7 +86,16 @@ func New(opts ...Option) *App {
 	}
 
 	return &App{
-		fxApp: fx.New(fx.Options(cfg.fxOptions...)),
+		cfg: cfg,
+		fxApp: fx.New(
+			fx.Options(cfg.fxOptions...),
+			// 使用 log 包中配置好的 slog
+			fx.WithLogger(func() fxevent.Logger {
+				logger := &fxevent.SlogLogger{Logger: log.GetDefaultSlog()}
+				logger.UseLogLevel(slog.LevelDebug)
+				return logger
+			}),
+		),
 	}
 }
 
