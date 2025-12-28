@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/haysons/gokit/middleware"
 )
 
 // ServerConfig http 服务器配置项
@@ -82,9 +83,10 @@ func WithMuxOptions(opts ...runtime.ServeMuxOption) ServerOption {
 }
 
 type Server struct {
-	httpSrv *http.Server
-	mux     *runtime.ServeMux
-	cfg     *ServerConfig
+	httpSrv    *http.Server
+	mux        *runtime.ServeMux
+	cfg        *ServerConfig
+	middleware []middleware.Middleware
 }
 
 // NewServer 创建 http 服务器
@@ -94,9 +96,22 @@ func NewServer(opts ...ServerOption) *Server {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	srv := &Server{
+		cfg: cfg,
+	}
+
+	// 中间件处理
+	middlewareOpts := runtime.WithMiddlewares(srv.middlewareToMux())
+
+	muxOpts := []runtime.ServeMuxOption{
+		middlewareOpts,
+	}
+	if len(cfg.muxOptions) > 0 {
+		muxOpts = append(muxOpts, cfg.muxOptions...)
+	}
 
 	// 构造 http.Server
-	mux := runtime.NewServeMux(cfg.muxOptions...)
+	mux := runtime.NewServeMux(muxOpts...)
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           mux,
@@ -106,11 +121,14 @@ func NewServer(opts ...ServerOption) *Server {
 		IdleTimeout:       cfg.IdleTimeout,
 		TLSConfig:         cfg.tlsConf,
 	}
-	return &Server{
-		httpSrv: httpSrv,
-		mux:     mux,
-		cfg:     cfg,
-	}
+	srv.httpSrv = httpSrv
+	srv.mux = mux
+	return srv
+}
+
+// Use 添加中间件
+func (s *Server) Use(m ...middleware.Middleware) {
+	s.middleware = append(s.middleware, m...)
 }
 
 // GetMux 获取 ServeMux，主要用于外部注册处理函数
@@ -143,4 +161,14 @@ func (s *Server) Stop(ctx context.Context) error {
 		}
 	}
 	return err
+}
+
+// middlewareToMux 通用中间件转化为 grpc gateway 中间件
+func (s *Server) middlewareToMux() runtime.Middleware {
+	return func(handlerFunc runtime.HandlerFunc) runtime.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			// todo: 此处考虑能否将 grpc gateway 内部加一段直接使用解码后的 req resp 的中间件的逻辑
+			handlerFunc(w, r, pathParams)
+		}
+	}
 }

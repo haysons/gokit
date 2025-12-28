@@ -32,6 +32,27 @@ func TestConfig_LoadAndGet(t *testing.T) {
 	assert.Equal(t, 8080, conf.Server.Port)
 }
 
+func TestConfig_LoadAndGetKey(t *testing.T) {
+	cfg := config.New[ServerConfig]()
+	cfg.SetType("yaml")
+	cfg.SetFile(filepath.Join("testdata", "config.yaml"))
+
+	err := cfg.Load()
+	assert.NoError(t, err)
+
+	host := cfg.GetString("server.host")
+	assert.Equal(t, "127.0.0.1", host)
+
+	port := cfg.GetInt("server.port")
+	assert.Equal(t, 8080, port)
+
+	timeout := cfg.GetDuration("server.timeout")
+	assert.Equal(t, 2*time.Second, timeout)
+
+	use := cfg.GetBool("server.use")
+	assert.Equal(t, true, use)
+}
+
 func TestConfig_SetDefault(t *testing.T) {
 	cfg := config.New[ServerConfig]()
 	cfg.SetType("yaml")

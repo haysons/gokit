@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/haysons/gokit/log"
@@ -82,6 +83,31 @@ func (c *Config[T]) Get() T {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.config
+}
+
+// GetString 依据配置 key 获取特定 string 类型配置项
+func (c *Config[T]) GetString(key string) string {
+	return c.viper.GetString(key)
+}
+
+// GetBool 依据配置 key 获取特定 bool 类型配置项
+func (c *Config[T]) GetBool(key string) bool {
+	return c.viper.GetBool(key)
+}
+
+// GetInt 依据配置 key 获取特定 int 类型配置项
+func (c *Config[T]) GetInt(key string) int {
+	return c.viper.GetInt(key)
+}
+
+// GetFloat64 依据配置 key 获取特定 float64 类型配置项
+func (c *Config[T]) GetFloat64(key string) float64 {
+	return c.viper.GetFloat64(key)
+}
+
+// GetDuration 依据配置 key 获取特定 time.Duration 类型配置项
+func (c *Config[T]) GetDuration(key string) time.Duration {
+	return c.viper.GetDuration(key)
 }
 
 // Watch 监听配置项变化
