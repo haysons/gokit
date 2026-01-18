@@ -26,6 +26,9 @@ type Transporter interface {
 	// Operation 返回当前的服务名及方法名，可直观定位当前操作
 	Operation() string
 
+	// Endpoint 访问的入口点
+	Endpoint() string
+
 	// RequestHeader 返回请求 header
 	// http: http.Header
 	// grpc: metadata.MD

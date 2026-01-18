@@ -24,7 +24,6 @@ const (
 	DefaultClientRequestsCounterName  = "client_requests_code_total"
 )
 
-// Option is metrics option.
 type Option func(*options)
 
 // WithRequests 统计不同类型和状态的累计请求数

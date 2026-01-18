@@ -6,8 +6,10 @@ import (
 	"net"
 
 	"github.com/haysons/gokit/middleware"
+	"github.com/haysons/gokit/transport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	grpcmd "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -174,6 +176,16 @@ func (s *Server) Stop(ctx context.Context) error {
 // middlewareToUnaryInterceptor 通用中间件转化为 grpc 拦截器
 func (s *Server) middlewareToUnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// 构建传输层信息，并注入 context
+		md, _ := grpcmd.FromIncomingContext(ctx)
+		replyHeader := grpcmd.MD{}
+		tr := &Transport{
+			operation:   info.FullMethod,
+			reqHeader:   headerCarrier(md),
+			replyHeader: headerCarrier(replyHeader),
+		}
+		ctx = transport.InjectServerContext(ctx, tr)
+
 		h := func(ctx context.Context, req any) (any, error) {
 			return handler(ctx, req)
 		}

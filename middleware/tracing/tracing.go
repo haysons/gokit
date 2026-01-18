@@ -47,6 +47,7 @@ func Server(opts ...Option) middleware.Middleware {
 				var span trace.Span
 				// operation 作为 span 名称，请求 header 作为元数据的传播器
 				ctx, span = tracer.Start(ctx, tr.Operation(), tr.RequestHeader())
+				setServerSpan(ctx, span, req)
 				defer func() { tracer.End(ctx, span, reply, err) }()
 			}
 			return handler(ctx, req)
@@ -63,6 +64,7 @@ func Client(opts ...Option) middleware.Middleware {
 				var span trace.Span
 				// operation 作为 span 名称，请求 header 作为元数据的传播器
 				ctx, span = tracer.Start(ctx, tr.Operation(), tr.RequestHeader())
+				setClientSpan(ctx, span, req)
 				defer func() { tracer.End(ctx, span, reply, err) }()
 			}
 			return handler(ctx, req)
