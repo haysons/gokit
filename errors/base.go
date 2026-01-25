@@ -124,3 +124,12 @@ func NewBizf(code int, hint string, format string, args ...any) error {
 	err = WithGrpcCode(err, codes.FailedPrecondition)
 	return WithHint(err, hint)
 }
+
+// NewUnauthorized 定义未授权类型的错误
+func NewUnauthorized(code int, hint string, msg string) error {
+	err := errors.NewWithDepth(1, msg)
+	err = WithCode(err, code)
+	err = WithHttpCode(err, http.StatusUnauthorized)
+	err = WithGrpcCode(err, codes.PermissionDenied)
+	return WithHint(err, hint)
+}
