@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/haysons/gokit/middleware"
 	"github.com/haysons/gokit/transport/testdata/helloworld"
 	"github.com/stretchr/testify/require"
 )
@@ -22,11 +21,6 @@ func (g testGreeterServer) SayHello(ctx context.Context, request *helloworld.Hel
 }
 
 // TestServerStart tests basic HTTP server functionality with protoc-generated gateway
-//
-// Note: This test uses the original protoc-generated gateway code.
-// For middleware to work with protoc-generated handlers, you need to:
-// 1. Use the modified protoc-gen-grpc-gateway from https://github.com/haysons/grpc-gateway
-// 2. Regenerate your .pb.gw.go files with the modified plugin
 func TestServerStart(t *testing.T) {
 	ctx := context.Background()
 	server := NewServer(WithAddr(":8088"))
@@ -56,40 +50,30 @@ func TestServerStart(t *testing.T) {
 }
 
 // TestServerWithMiddleware tests that middlewares work with protoc-generated gateway
-//
-// This test requires the modified protoc-gen-grpc-gateway to regenerate the .pb.gw.go files.
-// Without regeneration, the test will pass but middleware will not be called.
-//
-// To regenerate:
-//  1. Build the modified plugin: cd /Users/hayson/GolandProjects/grpc-gateway && go build -o /tmp/protoc-gen-grpc-gateway ./protoc-gen-grpc-gateway
-//  2. Regenerate: protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=:. your.proto
-//
-// After regeneration, the middlewares registered via server.Use() will automatically
-// be applied to all methods registered via RegisterGreeterHandlerServer().
 func TestServerWithMiddleware(t *testing.T) {
+	// Clear any previous interceptors
+	helloworld.ClearGokitInterceptors()
+	defer helloworld.ClearGokitInterceptors()
+
 	// Track middleware execution
 	var middlewareCalled atomic.Bool
 	var capturedName string
 
-	// Create a custom middleware
-	testMiddleware := func(next middleware.Handler) middleware.Handler {
-		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			middlewareCalled.Store(true)
-			// Capture request data
-			if r, ok := req.(*helloworld.HelloRequest); ok {
-				capturedName = r.Name
-			}
-			return next(ctx, req)
+	// Create a custom middleware using gokit interceptor
+	testMiddleware := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+		middlewareCalled.Store(true)
+		// Capture request data
+		if r, ok := req.(*helloworld.HelloRequest); ok {
+			capturedName = r.Name
 		}
-	}
+		return handler(ctx, req)
+	})
+
+	// Register middleware
+	helloworld.RegisterGokitInterceptor(testMiddleware)
 
 	ctx := context.Background()
 	server := NewServer(WithAddr(":8089"))
-
-	// Register middleware
-	server.Use(testMiddleware)
-
-	// Register handler using protoc-generated gateway code
 	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), testGreeterServer{})
 	require.NoError(t, err)
 
@@ -112,10 +96,9 @@ func TestServerWithMiddleware(t *testing.T) {
 	require.Equal(t, http.StatusOK, res.StatusCode())
 	require.Equal(t, "Hello middleware-test", reply.Message)
 
-	// Note: After regenerating with modified protoc-gen-grpc-gateway,
-	// the middleware should be called. Without regeneration, it won't be.
-	// This test demonstrates the expected behavior after regeneration.
-	t.Logf("Middleware called: %v, captured name: %s", middlewareCalled.Load(), capturedName)
+	// Verify middleware was called and captured the request
+	require.True(t, middlewareCalled.Load(), "Middleware should have been called")
+	require.Equal(t, "middleware-test", capturedName)
 
 	// cleanup
 	server.Stop(context.Background())
@@ -123,36 +106,34 @@ func TestServerWithMiddleware(t *testing.T) {
 
 // TestServerWithMultipleMiddlewares tests multiple middleware chain
 func TestServerWithMultipleMiddlewares(t *testing.T) {
+	// Clear any previous interceptors
+	helloworld.ClearGokitInterceptors()
+	defer helloworld.ClearGokitInterceptors()
+
 	callOrder := make([]string, 0, 3)
 
 	// Middleware 1
-	middleware1 := func(next middleware.Handler) middleware.Handler {
-		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			callOrder = append(callOrder, "1_before")
-			resp, err := next(ctx, req)
-			callOrder = append(callOrder, "1_after")
-			return resp, err
-		}
-	}
+	middleware1 := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+		callOrder = append(callOrder, "1_before")
+		r, err := handler(ctx, req)
+		callOrder = append(callOrder, "1_after")
+		return r, err
+	})
 
 	// Middleware 2
-	middleware2 := func(next middleware.Handler) middleware.Handler {
-		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			callOrder = append(callOrder, "2_before")
-			resp, err := next(ctx, req)
-			callOrder = append(callOrder, "2_after")
-			return resp, err
-		}
-	}
+	middleware2 := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+		callOrder = append(callOrder, "2_before")
+		r, err := handler(ctx, req)
+		callOrder = append(callOrder, "2_after")
+		return r, err
+	})
+
+	// Register middlewares
+	helloworld.RegisterGokitInterceptor(middleware1)
+	helloworld.RegisterGokitInterceptor(middleware2)
 
 	ctx := context.Background()
 	server := NewServer(WithAddr(":8090"))
-
-	// Register middlewares in order
-	server.Use(middleware1)
-	server.Use(middleware2)
-
-	// Register handler
 	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), testGreeterServer{})
 	require.NoError(t, err)
 
@@ -174,7 +155,15 @@ func TestServerWithMultipleMiddlewares(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, res.StatusCode())
 
-	// Log the call order (will be empty without regeneration)
+	// Verify middleware execution order
+	// Middlewares are executed in reverse registration order: last registered = outermost (executed first)
+	expectedOrder := []string{
+		"2_before",   // middleware2 is registered last, so it's outermost
+		"1_before",   // middleware1 is inner
+		"1_after",    // then returns
+		"2_after",    // then outermost returns
+	}
+	require.Equal(t, expectedOrder, callOrder, "Middleware chain should execute in order")
 	t.Logf("Call order: %v", callOrder)
 
 	// cleanup
