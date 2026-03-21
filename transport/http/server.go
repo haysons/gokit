@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	gruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/haysons/gokit/middleware"
+	"github.com/haysons/gokit/transport"
 )
 
 // ServerConfig http 服务器配置项
@@ -19,8 +20,8 @@ type ServerConfig struct {
 	WriteTimeout      time.Duration `mapstructure:"write_timeout"`       // 写响应的超时时间
 	IdleTimeout       time.Duration `mapstructure:"idle_timeout"`        // Keep-Alive 空闲超时时间
 
-	tlsConf    *tls.Config              // tls 配置
-	muxOptions []runtime.ServeMuxOption // grpc-gateway mux 需要用到配置项
+	tlsConf    *tls.Config                    // tls 配置
+	muxOptions []gruntime.ServeMuxOption       // grpc-gateway mux 需要用到配置项
 }
 
 // ServerOption 函数式配置项
@@ -76,17 +77,32 @@ func WithTLSConfig(cfg *tls.Config) ServerOption {
 }
 
 // WithMuxOptions 配置 grpc-gateway mux 相关
-func WithMuxOptions(opts ...runtime.ServeMuxOption) ServerOption {
+func WithMuxOptions(opts ...gruntime.ServeMuxOption) ServerOption {
 	return func(c *ServerConfig) {
-		c.muxOptions = opts
+		c.muxOptions = append(c.muxOptions, opts...)
 	}
 }
 
+// Server http 服务器
+//
+// 使用方式:
+//
+//	// 方式 1：使用 protoc 生成的 gateway 代码
+//	srv := http.NewServer(http.WithAddr(":8080"))
+//	srv.Use(middleware.Logging(), middleware.Recovery())
+//	RegisterGreeterHandlerServer(ctx, srv.GetMux(), &myServer{})
+//	srv.Start(ctx)
+//
+//	// 方式 2：手动注册路由（不需要 protoc）
+//	srv := http.NewServer(http.WithAddr(":8080"))
+//	srv.Use(middleware.Logging(), middleware.Recovery())
+//	srv.Handle("/api/hello", SayHello, &HelloRequest{}, &HelloReply{})
+//	srv.Start(ctx)
 type Server struct {
-	httpSrv    *http.Server
-	mux        *runtime.ServeMux
-	cfg        *ServerConfig
-	middleware []middleware.Middleware
+	httpSrv     *http.Server
+	mux         *gruntime.ServeMux
+	cfg         *ServerConfig
+	middlewares []middleware.Middleware
 }
 
 // NewServer 创建 http 服务器
@@ -96,22 +112,15 @@ func NewServer(opts ...ServerOption) *Server {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	srv := &Server{
-		cfg: cfg,
-	}
 
-	// 中间件处理
-	middlewareOpts := runtime.WithMiddlewares(srv.middlewareToMux())
-
-	muxOpts := []runtime.ServeMuxOption{
-		middlewareOpts,
-	}
+	// grpc-gateway mux 配置
+	var muxOpts []gruntime.ServeMuxOption
 	if len(cfg.muxOptions) > 0 {
 		muxOpts = append(muxOpts, cfg.muxOptions...)
 	}
 
 	// 构造 http.Server
-	mux := runtime.NewServeMux(muxOpts...)
+	mux := gruntime.NewServeMux(muxOpts...)
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           mux,
@@ -121,18 +130,59 @@ func NewServer(opts ...ServerOption) *Server {
 		IdleTimeout:       cfg.IdleTimeout,
 		TLSConfig:         cfg.tlsConf,
 	}
-	srv.httpSrv = httpSrv
-	srv.mux = mux
-	return srv
+	return &Server{
+		httpSrv:     httpSrv,
+		mux:         mux,
+		cfg:         cfg,
+		middlewares: []middleware.Middleware{},
+	}
 }
 
 // Use 添加中间件
+// 注册的中间件会自动应用到所有 protoc 生成的 gateway 路由和手动注册的路由
+//
+//	// 示例
+//	srv := http.NewServer(http.WithAddr(":8080"))
+//	srv.Use(middleware.Logging(), middleware.Recovery())
+//	RegisterGreeterHandlerServer(ctx, srv.GetMux(), &myServer{})
 func (s *Server) Use(m ...middleware.Middleware) {
-	s.middleware = append(s.middleware, m...)
+	s.middlewares = append(s.middlewares, m...)
+	
+	// 注册到 grpc-gateway 的全局拦截器
+	s.registerGatewayInterceptor()
+}
+
+// registerGatewayInterceptor 将 gokit middleware 注册到 grpc-gateway 的拦截器
+func (s *Server) registerGatewayInterceptor() {
+	if len(s.middlewares) == 0 {
+		return
+	}
+	
+	// 创建 gokit middleware 到 grpc-gateway interceptor 的转换
+	interceptor := gruntime.Interceptor(func(ctx context.Context, methodName string, req, resp interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+		// 构建 handler chain
+		h := handler
+		
+		// 应用所有中间件（从外到内）
+		for i := len(s.middlewares) - 1; i >= 0; i-- {
+			next := h
+			m := s.middlewares[i]
+			h = func(ctx context.Context, req any) (any, error) {
+				return m(func(ctx context.Context, req any) (any, error) {
+					return next(ctx, req)
+				})(ctx, req)
+			}
+		}
+		
+		return h(ctx, req)
+	})
+	
+	// 注册拦截器
+	gruntime.RegisterInterceptor(interceptor)
 }
 
 // GetMux 获取 ServeMux，主要用于外部注册处理函数
-func (s *Server) GetMux() *runtime.ServeMux {
+func (s *Server) GetMux() *gruntime.ServeMux {
 	return s.mux
 }
 
@@ -163,12 +213,8 @@ func (s *Server) Stop(ctx context.Context) error {
 	return err
 }
 
-// middlewareToMux 通用中间件转化为 grpc gateway 中间件
-func (s *Server) middlewareToMux() runtime.Middleware {
-	return func(handlerFunc runtime.HandlerFunc) runtime.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-			// todo: 此处考虑能否将 grpc gateway 内部加一段直接使用解码后的 req resp 的中间件的逻辑
-			handlerFunc(w, r, pathParams)
-		}
-	}
+// GetTransport 获取当前请求的 transport 信息
+// 用于在中间件中获取请求信息
+func GetTransport(ctx context.Context) (transport.Transporter, bool) {
+	return transport.FromServerContext(ctx)
 }
