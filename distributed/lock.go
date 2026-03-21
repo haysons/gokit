@@ -12,10 +12,10 @@ import (
 
 // Lock 分布式锁
 type Lock struct {
-	client     *clientv3.Client
-	session    *concurrency.Session
-	mutex      *concurrency.Mutex
-	lockKey    string
+	client  *clientv3.Client
+	session *concurrency.Session
+	mutex   *concurrency.Mutex
+	lockKey string
 }
 
 // NewLock 创建分布式锁实例
@@ -26,10 +26,10 @@ func NewLock(client *clientv3.Client, lockKey string) (*Lock, error) {
 	}
 
 	return &Lock{
-		client:     client,
-		session:    session,
-		mutex:      concurrency.NewMutex(session, lockKey),
-		lockKey:    lockKey,
+		client:  client,
+		session: session,
+		mutex:   concurrency.NewMutex(session, lockKey),
+		lockKey: lockKey,
 	}, nil
 }
 

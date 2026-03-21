@@ -28,7 +28,7 @@ type Election struct {
 }
 
 // NewElection 新建选举对象
-func NewElection(client *clientv3.Client, elKey string) (*Election, error) {
+func NewElection(client *clientv3.Client, elKey string) *Election {
 	id := fmt.Sprintf("%s-%s", "", xid.New().String())
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Election{
@@ -40,7 +40,7 @@ func NewElection(client *clientv3.Client, elKey string) (*Election, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		client:   client,
-	}, nil
+	}
 }
 
 // ID 当前竞选者的id
@@ -65,7 +65,7 @@ func (el *Election) run(ctx context.Context) {
 		case <-el.ctx.Done():
 			return
 		default:
-			elect, electRes, err := el.elect()
+			elect, electRes, err := el.elect(ctx)
 			if err != nil {
 				time.Sleep(5 * time.Second)
 				break
@@ -78,8 +78,13 @@ func (el *Election) run(ctx context.Context) {
 }
 
 // elect 发起竞选
-func (el *Election) elect() (*concurrency.Election, chan error, error) {
-	session, err := concurrency.NewSession(el.client, concurrency.WithTTL(10), concurrency.WithContext(el.ctx))
+func (el *Election) elect(ctx context.Context) (*concurrency.Election, chan error, error) {
+	// 关闭旧 session（如果有），避免资源泄漏
+	if el.session != nil {
+		el.session.Close()
+	}
+
+	session, err := concurrency.NewSession(el.client, concurrency.WithTTL(10), concurrency.WithContext(ctx))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -87,7 +92,7 @@ func (el *Election) elect() (*concurrency.Election, chan error, error) {
 	electRes := make(chan error, 1)
 	election := concurrency.NewElection(session, el.elKey)
 	go func() {
-		electRes <- election.Campaign(el.ctx, el.id)
+		electRes <- election.Campaign(ctx, el.id)
 	}()
 	return election, electRes, nil
 }
@@ -96,7 +101,7 @@ func (el *Election) elect() (*concurrency.Election, chan error, error) {
 func (el *Election) listen(ctx context.Context, elect *concurrency.Election, electRes chan error) error {
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
-	leaderChan := elect.Observe(el.ctx)
+	leaderChan := elect.Observe(ctx)
 	for {
 		select {
 		case err := <-electRes:
@@ -119,7 +124,7 @@ func (el *Election) listen(ctx context.Context, elect *concurrency.Election, ele
 			}
 		case <-ticker.C:
 			// 此处为兜底逻辑，若监听leader变化的管道发生网络问题，可通过定期的查询判断出leader是否发生变化
-			resp, err := elect.Leader(el.ctx)
+			resp, err := elect.Leader(ctx)
 			if err != nil {
 				if errors.Is(err, concurrency.ErrElectionNoLeader) {
 					// 不存在leader，发起新的选举

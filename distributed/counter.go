@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"go.etcd.io/etcd/client/v3"
 )
@@ -49,22 +48,51 @@ func (c *Counter) Incr(ctx context.Context) (int64, error) {
 
 // IncrBy 原子递增指定值，返回新值
 func (c *Counter) IncrBy(ctx context.Context, delta int64) (int64, error) {
-	op := clientv3.OpTxn().
-		If(clientv3.Compare(clientv3.Version(c.key), ">", 0)).
-		Then(clientv3.OpPut(c.key, strconv.FormatInt(delta, 10), clientv3.WithPrevKV())).
-		Else(clientv3.OpPut(c.key, strconv.FormatInt(delta, 10)))
+	// 先读取当前值
+	getResp, err := c.client.Get(ctx, c.key)
+	if err != nil {
+		return 0, fmt.Errorf("incr counter failed to get current value: %w", err)
+	}
 
-	resp, err := c.client.Txn(ctx).Commit(op)
+	var prevVal int64
+	var modRevision int64
+
+	if getResp.Count > 0 {
+		prevVal, err = strconv.ParseInt(string(getResp.Kvs[0].Value), 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("incr counter failed to parse current value: %w", err)
+		}
+		modRevision = getResp.Kvs[0].ModRevision
+	}
+
+	newVal := prevVal + delta
+	newValStr := strconv.FormatInt(newVal, 10)
+
+	// 使用 CAS 事务保证原子性：若 modRevision 未变则写入新值，否则说明有并发修改
+	var txnResp *clientv3.TxnResponse
+	if modRevision == 0 {
+		// key 不存在，条件：version == 0
+		txnResp, err = c.client.Txn(ctx).
+			If(clientv3.Compare(clientv3.Version(c.key), "=", 0)).
+			Then(clientv3.OpPut(c.key, newValStr)).
+			Commit()
+	} else {
+		// key 存在，条件：modRevision 未变
+		txnResp, err = c.client.Txn(ctx).
+			If(clientv3.Compare(clientv3.ModRevision(c.key), "=", modRevision)).
+			Then(clientv3.OpPut(c.key, newValStr)).
+			Commit()
+	}
 	if err != nil {
 		return 0, fmt.Errorf("incr counter failed: %w", err)
 	}
 
-	if resp.Succeeded {
-		prevVal, _ := strconv.ParseInt(string(resp.Responses[0].GetResponsePut().PrevKv.Value), 10, 64)
-		return prevVal + delta, nil
+	if !txnResp.Succeeded {
+		// 发生并发竞争，重试
+		return c.IncrBy(ctx, delta)
 	}
 
-	return delta, nil
+	return newVal, nil
 }
 
 // Decr 原子递减计数，返回新值

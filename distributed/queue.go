@@ -11,15 +11,15 @@ import (
 
 // Queue 分布式队列
 type Queue struct {
-	client     *clientv3.Client
-	keyPrefix  string
+	client    *clientv3.Client
+	keyPrefix string
 }
 
 // NewQueue 创建分布式队列实例
 func NewQueue(client *clientv3.Client, keyPrefix string) *Queue {
 	return &Queue{
-		client:     client,
-		keyPrefix:  keyPrefix,
+		client:    client,
+		keyPrefix: keyPrefix,
 	}
 }
 
@@ -44,20 +44,23 @@ func (q *Queue) Dequeue(ctx context.Context, timeout time.Duration) (interface{}
 	defer cancel()
 
 	for {
-		// 获取队列中最旧的元素
-		resp, err := q.client.Get(ctx, q.keyPrefix, clientv3.WithPrefix(), clientv3.WithFirstKey()...)
+		// 获取队列中最旧的元素（按 key 升序取第一条）
+		resp, err := q.client.Get(ctx, q.keyPrefix,
+			clientv3.WithPrefix(),
+			clientv3.WithLimit(1),
+			clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("get queue elements failed: %w", err)
 		}
 
 		if resp.Count > 0 {
-			// 尝试删除该元素
-			txnResp, err := q.client.Txn(ctx).Commit(
-				clientv3.OpTxn().
-					If(clientv3.Compare(clientv3.Version(string(resp.Kvs[0].Key)), "=", resp.Kvs[0].Version)).
-					Then(clientv3.OpDelete(string(resp.Kvs[0].Key))).
-					Else(),
-			)
+			// 尝试删除该元素（CAS：version 未变才删除，防止并发重复消费）
+			key := string(resp.Kvs[0].Key)
+			txnResp, err := q.client.Txn(ctx).
+				If(clientv3.Compare(clientv3.Version(key), "=", resp.Kvs[0].Version)).
+				Then(clientv3.OpDelete(key)).
+				Commit()
 			if err != nil {
 				return nil, fmt.Errorf("dequeue transaction failed: %w", err)
 			}
