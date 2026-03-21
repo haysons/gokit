@@ -58,14 +58,14 @@ if errors.IsNotFound(err) { /* 处理不存在 */ }
 gokit/
 ├── app/            # 应用框架
 ├── config/         # 配置管理
-├── distributed/   # 分布式工具
-├── errors/        # 错误处理
-├── log/           # 日志组件
-├── middleware/    # 中间件
-├── transport/     # 传输层
-├── metadata/      # 元数据
-├── constraints/   # 泛型约束
-└── util/          # 工具函数
+├── distributed/    # 分布式工具
+├── errors/         # 错误处理
+├── log/            # 日志组件
+├── middleware/     # 中间件
+├── transport/      # 传输层
+├── metadata/       # 元数据
+├── constraints/    # 泛型约束
+└── util/           # 工具函数
 ```
 
 ## License
