@@ -3,11 +3,11 @@ package tracing
 import (
 	"context"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/haysons/gokit/transport"
-	"github.com/haysons/gokit/transport/http"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
@@ -29,14 +29,13 @@ func setClientSpan(ctx context.Context, span trace.Span, m any) {
 		rpcKind = tr.Kind().String()
 		switch tr.Kind() {
 		case transport.KindHTTP:
-			if ht, ok := tr.(http.Transporter); ok {
-				method := ht.Request().Method
-				route := ht.PathTemplate()
-				path := ht.Request().URL.Path
-				attrs = append(attrs, semconv.HTTPMethodKey.String(method))
-				attrs = append(attrs, semconv.HTTPRouteKey.String(route))
-				attrs = append(attrs, semconv.HTTPTargetKey.String(path))
-				remote = ht.Request().Host
+			if req := tr.Request(); req != nil {
+				if httpReq, ok := req.(*http.Request); ok {
+					attrs = append(attrs, semconv.HTTPMethodKey.String(httpReq.Method))
+					attrs = append(attrs, semconv.HTTPTargetKey.String(httpReq.URL.Path))
+					attrs = append(attrs, semconv.HTTPRouteKey.String(tr.PathTemplate()))
+					remote = httpReq.Host
+				}
 			}
 		case transport.KindGRPC:
 			remote, _ = parseTarget(tr.Endpoint())
@@ -69,14 +68,13 @@ func setServerSpan(ctx context.Context, span trace.Span, m any) {
 		rpcKind = tr.Kind().String()
 		switch tr.Kind() {
 		case transport.KindHTTP:
-			if ht, ok := tr.(http.Transporter); ok {
-				method := ht.Request().Method
-				route := ht.PathTemplate()
-				path := ht.Request().URL.Path
-				attrs = append(attrs, semconv.HTTPMethodKey.String(method))
-				attrs = append(attrs, semconv.HTTPRouteKey.String(route))
-				attrs = append(attrs, semconv.HTTPTargetKey.String(path))
-				remote = ht.Request().RemoteAddr
+			if req := tr.Request(); req != nil {
+				if httpReq, ok := req.(*http.Request); ok {
+					attrs = append(attrs, semconv.HTTPMethodKey.String(httpReq.Method))
+					attrs = append(attrs, semconv.HTTPTargetKey.String(httpReq.URL.Path))
+					attrs = append(attrs, semconv.HTTPRouteKey.String(tr.PathTemplate()))
+					remote = httpReq.RemoteAddr
+				}
 			}
 		case transport.KindGRPC:
 			if p, ok := peer.FromContext(ctx); ok {

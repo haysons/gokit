@@ -40,6 +40,16 @@ func (tr *Transport) ReplyHeader() transport.Header {
 	return tr.replyHeader
 }
 
+// Request 返回原始 HTTP 请求（gRPC 不支持，返回 nil）
+func (tr *Transport) Request() interface{} {
+	return nil
+}
+
+// PathTemplate 返回路由路径模板（gRPC 不支持，返回空字符串）
+func (tr *Transport) PathTemplate() string {
+	return ""
+}
+
 // headerCarrier grpc 传输层使用 metadata.MD 传输 header
 type headerCarrier grpcmd.MD
 

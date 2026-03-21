@@ -1,8 +1,6 @@
 package transport
 
-import (
-	"context"
-)
+import "context"
 
 // Server 传输层 server 部分
 type Server interface {
@@ -38,6 +36,12 @@ type Transporter interface {
 	// http: http.Header
 	// grpc: metadata.MD
 	ReplyHeader() Header
+
+	// PathTemplate 返回路由路径模板（仅 HTTP 传输层有效）
+	PathTemplate() string
+
+	// Request 返回原始 HTTP 请求（仅 HTTP 传输层有效，gRPC 返回 nil）
+	Request() interface{}
 }
 
 // Kind 传输层类型，grpc 或 http

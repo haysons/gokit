@@ -10,12 +10,13 @@ var _ transport.Transporter = (*Transport)(nil)
 
 // Transport HTTP 传输层实现
 type Transport struct {
-	endpoint    string
-	operation   string
-	reqHeader   http.Header
-	replyHeader http.Header
-	request     *http.Request
-	response    http.ResponseWriter
+	endpoint      string
+	operation     string
+	reqHeader     http.Header
+	replyHeader   http.Header
+	request       *http.Request
+	response      http.ResponseWriter
+	pathTemplate  string
 }
 
 // Kind 传输类别
@@ -44,13 +45,18 @@ func (tr *Transport) ReplyHeader() transport.Header {
 }
 
 // Request 返回原始 HTTP 请求
-func (tr *Transport) Request() *http.Request {
+func (tr *Transport) Request() interface{} {
 	return tr.request
 }
 
 // Response 返回原始 HTTP 响应
 func (tr *Transport) Response() http.ResponseWriter {
 	return tr.response
+}
+
+// PathTemplate returns the route path template
+func (tr *Transport) PathTemplate() string {
+	return tr.pathTemplate
 }
 
 // headerCarrier HTTP header 包装
