@@ -49,18 +49,18 @@ func TestServerStart(t *testing.T) {
 	server.Stop(context.Background())
 }
 
-// TestServerWithMiddleware tests that middlewares work with protoc-generated gateway
+// TestServerWithMiddleware tests that middlewares work with GreeterServerWrapper
 func TestServerWithMiddleware(t *testing.T) {
-	// Clear any previous interceptors
-	helloworld.ClearGokitInterceptors()
-	defer helloworld.ClearGokitInterceptors()
+	// Clear previous interceptors
+	ClearInterceptors()
+	defer ClearInterceptors()
 
 	// Track middleware execution
 	var middlewareCalled atomic.Bool
 	var capturedName string
 
-	// Create a custom middleware using gokit interceptor
-	testMiddleware := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+	// Create an interceptor
+	testInterceptor := Interceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
 		middlewareCalled.Store(true)
 		// Capture request data
 		if r, ok := req.(*helloworld.HelloRequest); ok {
@@ -69,12 +69,13 @@ func TestServerWithMiddleware(t *testing.T) {
 		return handler(ctx, req)
 	})
 
-	// Register middleware
-	helloworld.RegisterGokitInterceptor(testMiddleware)
+	// Create wrapped server with interceptors
+	wrapped := NewGreeterServerWrapper(&testGreeterServer{})
+	wrapped.Use(testInterceptor)
 
 	ctx := context.Background()
 	server := NewServer(WithAddr(":8089"))
-	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), testGreeterServer{})
+	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), wrapped)
 	require.NoError(t, err)
 
 	go func() {
@@ -106,35 +107,36 @@ func TestServerWithMiddleware(t *testing.T) {
 
 // TestServerWithMultipleMiddlewares tests multiple middleware chain
 func TestServerWithMultipleMiddlewares(t *testing.T) {
-	// Clear any previous interceptors
-	helloworld.ClearGokitInterceptors()
-	defer helloworld.ClearGokitInterceptors()
+	// Clear previous interceptors
+	ClearInterceptors()
+	defer ClearInterceptors()
 
 	callOrder := make([]string, 0, 3)
 
-	// Middleware 1
-	middleware1 := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+	// Interceptor 1
+	interceptor1 := Interceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
 		callOrder = append(callOrder, "1_before")
 		r, err := handler(ctx, req)
 		callOrder = append(callOrder, "1_after")
 		return r, err
 	})
 
-	// Middleware 2
-	middleware2 := helloworld.GokitInterceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
+	// Interceptor 2
+	interceptor2 := Interceptor(func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
 		callOrder = append(callOrder, "2_before")
 		r, err := handler(ctx, req)
 		callOrder = append(callOrder, "2_after")
 		return r, err
 	})
 
-	// Register middlewares
-	helloworld.RegisterGokitInterceptor(middleware1)
-	helloworld.RegisterGokitInterceptor(middleware2)
+	// Create wrapped server with interceptors (last registered = outermost)
+	wrapped := NewGreeterServerWrapper(&testGreeterServer{})
+	wrapped.Use(interceptor1)
+	wrapped.Use(interceptor2)
 
 	ctx := context.Background()
 	server := NewServer(WithAddr(":8090"))
-	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), testGreeterServer{})
+	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), wrapped)
 	require.NoError(t, err)
 
 	go func() {
@@ -155,16 +157,50 @@ func TestServerWithMultipleMiddlewares(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, res.StatusCode())
 
-	// Verify middleware execution order
-	// Middlewares are executed in reverse registration order: last registered = outermost (executed first)
+	// Verify interceptor execution order (first registered = outermost)
 	expectedOrder := []string{
-		"2_before",   // middleware2 is registered last, so it's outermost
-		"1_before",   // middleware1 is inner
-		"1_after",    // then returns
-		"2_after",    // then outermost returns
+		"1_before", // interceptor1 is registered first, so it's outermost
+		"2_before", // interceptor2 is inner
+		"2_after",  // then returns
+		"1_after",  // then outermost returns
 	}
-	require.Equal(t, expectedOrder, callOrder, "Middleware chain should execute in order")
+	require.Equal(t, expectedOrder, callOrder, "Interceptor chain should execute in order")
 	t.Logf("Call order: %v", callOrder)
+
+	// cleanup
+	server.Stop(context.Background())
+}
+
+// TestServerWithoutMiddleware tests that server works without middleware
+func TestServerWithoutMiddleware(t *testing.T) {
+	// Clear previous interceptors
+	ClearInterceptors()
+	defer ClearInterceptors()
+
+	// Create wrapped server without interceptors
+	wrapped := NewGreeterServerWrapper(&testGreeterServer{})
+
+	ctx := context.Background()
+	server := NewServer(WithAddr(":8091"))
+	err := helloworld.RegisterGreeterHandlerServer(ctx, server.GetMux(), wrapped)
+	require.NoError(t, err)
+
+	go func() {
+		err = server.Start(ctx)
+		require.NoError(t, err)
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	// Make request
+	req := &helloworld.HelloRequest{Name: "no-middleware"}
+	reply := &helloworld.HelloReply{}
+	res, err := resty.New().R().
+		SetBody(req).
+		SetResult(reply).
+		Post("http://localhost:8091/v1/hello")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, res.StatusCode())
+	require.Equal(t, "Hello no-middleware", reply.Message)
 
 	// cleanup
 	server.Stop(context.Background())
