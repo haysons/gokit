@@ -35,51 +35,6 @@ var (
 	_ = metadata.Join
 )
 
-// =============================================================================
-// gokit middleware support
-// =============================================================================
-
-// GokitInterceptor is a function that wraps the handler to add pre/post processing.
-type GokitInterceptor func(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error)
-
-// globalGokitInterceptors holds the registered interceptors
-var globalGokitInterceptors []GokitInterceptor
-
-// RegisterGokitInterceptor registers a global interceptor
-func RegisterGokitInterceptor(i GokitInterceptor) {
-	globalGokitInterceptors = append(globalGokitInterceptors, i)
-}
-
-// ClearGokitInterceptors clears all registered interceptors
-func ClearGokitInterceptors() {
-	globalGokitInterceptors = nil
-}
-
-// callWithGokitMiddleware calls the middleware chain for a method.
-// Middlewares are executed in the order they were registered: first registered = outermost (executed first).
-func callWithGokitMiddleware(ctx context.Context, methodName string, req interface{}, handler func(ctx context.Context, req interface{}) (interface{}, error)) (interface{}, error) {
-	if len(globalGokitInterceptors) == 0 {
-		return handler(ctx, req)
-	}
-
-	h := handler
-	// Build chain: first registered middleware is outermost (executed first)
-	for i := 0; i < len(globalGokitInterceptors); i++ {
-		next := h
-		m := globalGokitInterceptors[i]
-		h = func(ctx context.Context, req interface{}) (interface{}, error) {
-			return m(ctx, methodName, req, func(ctx context.Context, req interface{}) (interface{}, error) {
-				return next(ctx, req)
-			})
-		}
-	}
-	return h(ctx, req)
-}
-
-// =============================================================================
-// Generated code
-// =============================================================================
-
 func request_Greeter_SayHello_0(ctx context.Context, marshaler runtime.Marshaler, client GreeterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq HelloRequest
@@ -100,16 +55,8 @@ func local_request_Greeter_SayHello_0(ctx context.Context, marshaler runtime.Mar
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	
-	// Call with gokit middleware support
-	resp, err := callWithGokitMiddleware(ctx, "SayHello", &protoReq, func(ctx context.Context, req interface{}) (interface{}, error) {
-		return server.SayHello(ctx, req.(*HelloRequest))
-	})
-	if err != nil {
-		return nil, metadata, err
-	}
-	
-	return resp.(*HelloReply), metadata, nil
+	msg, err := server.SayHello(ctx, &protoReq)
+	return msg, metadata, err
 }
 
 // RegisterGreeterHandlerServer registers the http handlers for service Greeter to "mux".

@@ -8,7 +8,6 @@ require (
 	github.com/cockroachdb/errors v1.11.3
 	github.com/dchest/siphash v1.2.3
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-resty/resty/v2 v2.16.5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
@@ -71,5 +70,3 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7 // indirect
 )
-
-replace github.com/grpc-ecosystem/grpc-gateway/v2 => /Users/hayson/GolandProjects/grpc-gateway
